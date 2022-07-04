@@ -1,0 +1,13 @@
+// domain declarations
+area={Windfarm,Shipping_lane,Home_waters}
+target={Ship1,Ship2,Turbine1,Turbine2,Home_base}
+
+
+
+// predicate declarations
+Attack(target)
+Surveill(area)
+TargetIn(target,area!)
+
+// formulas
+0.000000    TargetIn(target,area) => (Surveill(area) => Attack(target))

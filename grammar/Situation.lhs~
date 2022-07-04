@@ -1,0 +1,114 @@
+\documentclass[12pt]{article}
+\usepackage{listings}
+\lstloadlanguages{Haskell}
+\lstnewenvironment{code}
+    {\lstset{}%
+      \csname lst@SetFirstLabel\endcsname}
+    {\csname lst@SaveFirstLabel\endcsname}
+    \lstset{
+      basicstyle=\small\ttfamily,
+      flexiblecolumns=false,
+      basewidth={0.5em,0.45em},
+      literate={+}{{$+$}}1 {/}{{$/$}}1 {*}{{$*$}}1 {=}{{$=$}}1
+               {>}{{$>$}}1 {<}{{$<$}}1 {\\}{{$\lambda$}}1
+               {\\\\}{{\char`\\\char`\\}}1
+               {->}{{$\rightarrow$}}2 {>=}{{$\geq$}}2 {<-}{{$\leftarrow$}}2
+               {<=}{{$\leq$}}2 {=>}{{$\Rightarrow$}}2 
+               {\ .}{{$\circ$}}2 {\ .\ }{{$\circ$}}2
+               {>>}{{>>}}2 {>>=}{{>>=}}2
+               {|}{{$\mid$}}1               
+    }
+\usepackage{graphicx}
+\title{CCG Parser for Building Traversal}
+\author{Simon Williams}
+\begin{document}
+\maketitle
+
+\section{Preamble}
+\label{sec:preamble}
+
+\subsection{Imports}
+\label{sec:imports}
+\begin{code}
+import Data.Maybe
+import Data.List
+import CCGParser
+import Diagrams.Backend.SVG
+import Diagrams.Prelude hiding (E)
+\end{code}
+
+\subsection{Tokens}
+\label{sec:tokens}
+
+The tokens are 
+
+\subsection{Lexicon}
+\label{sec:lexicon}
+
+Lexicon is a map from tokens to a list of categories
+There are rooms \texttt{R}, exits, \texttt{E}, routes between rooms \texttt{RR} and routes between exits and rooms and vice versa \texttt{RE} and \texttt{ER}
+\begin{code}
+data AtomicCategory = RR | RE | ER  | R Int | E Int deriving (Eq, Read)
+instance (Show AtomicCategory) where
+       show RR = "RR"
+       show RE = "RE"
+       show ER = "ER"
+       show (R i) = "R" ++ show i
+       show (E i) = "E" ++ show i
+\end{code}
+
+There are 12 rooms, 4 corridors and 2 exits
+\begin{code}
+data Token = Rm1 | Rm2 |Rm3|Rm4|Rm5|Rm6|Rm7|Rm8|Rm9|Rm10|Rm11|Rm12|Cr1|Cr2|Cr3|Cr4|Ex1|Ex2 deriving (Show,Eq,Read,Ord)
+\end{code}
+The building lexicon ecodes the constraints from the floor plan
+
+The rooms Must be rooms
+\begin{code}
+roomTokens = [ Rm1 , Rm2 ,Rm3,Rm4,Rm5,Rm6,Rm7,Rm8,Rm9,Rm10,Rm11,Rm12]
+roomCategories = [ Leaf $ R i | i <- [1..12] ]
+roomLexicon = zip roomTokens roomCategories
+\end{code}
+and the exits can only be exits
+\begin{code}
+exitLexicon = zip [Ex1,Ex2 ] [ Leaf $ E 1, Leaf $ E 2]
+\end{code}
+Room 11 can be a room or a transit location for each type of route. Similar to corridors
+\begin{code}
+r11 = [(Rm11, (DerivedCategory Forward (Leaf $ R 11) (Leaf $ R 12)))]
+c1 =
+   [(Cr1, (DerivedCategory Back (DerivedCategory Forward (Leaf RE) (Leaf $ E 1)) (Leaf $ R 7)))] ++
+   [(Cr1,(DerivedCategory Back (DerivedCategory Forward (Leaf RR) (Leaf  $ R 7))) (DerivedCategory Forward (Leaf RR) (Leaf $  R i))) | i <-[1..6]++[8..12]] ++
+   [(Cr1,(DerivedCategory Back (DerivedCategory Forward (Leaf RE) (Leaf  $ E 1))) (DerivedCategory Forward (Leaf RR) (Leaf $  R i))) | i <-[1..6]++[8..12]]
+\end{code}
+ Corridor 2 links rooms 1, 2 8
+\begin{code}
+c2direct = 
+  [ (Cr2, (DerivedCategory Back (DerivedCategory Forward (Leaf RR) (Leaf $ R i))) (Leaf $ R j)) | i <-[1,2,8],j <- [1,2,8], i/= j]
+\end{code}
+also connects to corridor 1 and 3
+\begin{code}
+c2connect =
+  [(Cr2,(DerivedCategory Back (DerivedCategory Forward (Leaf RR) (Leaf  $ R i))) (DerivedCategory Forward (Leaf RR) (Leaf $  R j))) | i <- [1,2,8], j<-[7,3,4,5,9] ]
+\end{code}
+Construct the lexicon map
+\begin{code}
+buildingLexicon = lexiconListToMap (c1++c2direct++c2connect ++ roomLexicon ++ exitLexicon)
+\end{code}
+\section{Interface}
+\label{sec:interface}
+
+
+\begin{code}
+main :: IO ()
+main = print Forward
+\end{code}
+
+\end{document}
+
+% ----- Configure Emacs -----
+%
+% Local Variables: ***
+% mode: latex ***
+% mmm-classes: literate-haskell-latex ***
+% End: ***
